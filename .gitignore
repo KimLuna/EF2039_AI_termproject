@@ -211,3 +211,8 @@ pretrained_models/
 *.pt
 *.pth
 *.h5
+
+# music sample or outputs
+*.mp3
+*.wav
+*.flac
