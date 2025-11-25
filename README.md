@@ -1,114 +1,226 @@
 # 🎵 AI Vocal Separator
 
-> **Term Project 01 - AI Model to User Application**  
-> A CLI-based application that separates mixed music tracks into individual stems (vocals, drums, bass, etc.) using the Spleeter AI model.
+### **Term Project 01 – AI Model to User Application**
 
-![Python](https://img.shields.io/badge/Python-3.8%20|%203.9%20|%203.10-blue)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-2.12.0-orange)
-![Spleeter](https://img.shields.io/badge/Spleeter-2.3.2-green)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+**Author: Seoyeong Kim (20240932)**
 
 ---
 
-## 📖 Introduction
+## 📌 1. Purpose
 
-This project aims to help musicians and creators by providing an easy-to-use tool for extracting **vocals** or **instrumental tracks (MR)** from MP3 files. It utilizes the **Spleeter** deep learning model (by Deezer) to perform high-quality source separation.
+This project follows the full development cycle required by **Term Project 01 – AI Model to User Application**, including:
 
-### **Key Features**
-- **2 Stems Separation**: Vocals / Accompaniment  
-- **4 Stems Separation**: Vocals / Drums / Bass / Other  
-- **5 Stems Separation**: Vocals / Drums / Bass / Piano / Other  
-- **User-Friendly CLI**
+* AI idea development
+* Pipeline design
+* Model selection (pretrained model from open-source code)
+* Environment setup
+* Model analysis
+* CLI → Web application development
+* Visualization using signal processing tools
+* Git-based code management
+* Distribution & documentation
+* Demo video for advertisement
+
+The goal is to understand *how an AI model evolves into a real-world user application*.
 
 ---
 
-## ⚙️ Environment & Prerequisites
+## 🚀 2. Motivation & Background
 
-### **Python Version**
-- **3.8 ~ 3.10**  
-  *(Python 3.11+ is NOT supported due to library conflicts)*
+### **Motivation**
 
-### **Required Tools**
-- **FFmpeg**
+I observed many people using Apple’s **Sing** (vocal-removal) feature, but:
 
-#### Install FFmpeg
+* It does **not** work for every song
+* It cannot separate individual instruments
+* Creators and musicians want more flexible and accurate tools
 
-**Ubuntu**
+This motivated me to build an **AI-powered vocal/instrument separator** that works for any MP3 file.
+
+### **Model Selection – Spleeter**
+
+I selected **Spleeter (by Deezer Research)** because:
+
+* Open-source
+* Pretrained U-Net architecture
+* High-quality separation (2/4/5 stems)
+* Supports both CLI and Python API
+* Industry-level performance
+
+---
+
+## 🧩 3. Project Pipeline (Simplified)
+
 ```
+User Upload → Flask Backend → Librosa Preprocessing
+       ↓
+Spleeter Model (2/4/5 stems)
+       ↓
+Separated Stems (WAV)
+       ↓
+Generate Waveform & Spectrogram Images
+       ↓
+Return Results to Browser
+```
+
+---
+
+## 🧠 4. Model Analysis Summary
+
+### **1) STFT (Short-Time Fourier Transform)**
+
+Converts waveform (time domain) → spectrogram (frequency domain)
+
+### **2) U-Net Architecture**
+
+* Encoder: extracts features
+* Bottleneck: learns instrument-specific patterns
+* Decoder: reconstructs masks
+* Skip connections: reduce loss of information
+
+### **3) Soft Masking + Inverse STFT**
+
+Applies predicted masks → reconstructs each stem → outputs WAV files.
+
+---
+
+## 🖥 5. System Requirements
+
+### ✔ Python Version
+
+* **Python 3.8 ~ 3.10 supported**
+* Python 3.11+ **NOT supported** (Spleeter incompatible)
+
+### ✔ FFmpeg required (audio I/O)
+
+Ubuntu:
+
+```bash
 sudo apt-get install ffmpeg
 ```
 
-**Windows**
-```
+Windows:
+
+```bash
 choco install ffmpeg
 ```
 
----
+### ✔ Install dependencies
 
-## 🚀 Installation
-
-### **1. Clone the repository**
-```
-git clone https://github.com/KimLuna/EF2039_AI_termproject.git
-cd EF2039_AI_termproject
-```
-
-### **2. Install dependencies**
-```
+```bash
 pip install -r requirements.txt
 ```
 
 ---
 
-## 💻 Usage
+## 💻 6. Usage
 
-### **1. Basic Usage (Default: 2stems)**
-```
+### **CLI Version**
+
+Run default (2 stems):
+
+```bash
 python main.py
 ```
 
-### **2. Select Specific Model**
-```
-python main.py --model 4stems
+Choose model:
+
+```bash
+python main.py -m 4stems
 ```
 
-### **3. Select Input File**
-```
-python main.py --input my_favorite_song.mp3
-```
+Choose MP3 file:
 
-### **4. Combine Options**
-```
-python main.py -m 5stems -i pop_song.mp3
+```bash
+python main.py -i my_song.mp3
 ```
 
 ---
 
-## 📂 Output Structure
+### **Web Version (Flask)**
+
+Run server:
+
+```bash
+python app.py
+```
+
+Open browser:
+
+```
+http://localhost:8000
+```
+
+Upload MP3 → choose stem model → separate.
+
+---
+
+## 📂 7. Output Structure
 
 ```
 output/
-├── test_song_2stems/
-│   ├── vocals.wav
-│   └── accompaniment.wav
-└── my_song_4stems/
-    ├── vocals.wav
-    ├── drums.wav
-    ├── bass.wav
-    └── other.wav
+ ├── test_song/
+ │   ├── vocals.wav
+ │   ├── accompaniment.wav
+ │   ├── drums.wav
+ │   ├── bass.wav
+ │   └── other.wav
 ```
 
 ---
 
-## ⚠️ Troubleshooting
+## 📊 Example Visualization Outputs
+
+Below are sample **waveform** and **spectrogram** images automatically generated by the app using `librosa` and saved in `static/` during processing.
+
+### 🎼 Waveform Example
+`static/waveforms/piano_wave.png`
+
+<img src="static/waveforms/piano_wave.png" width="500">
+
+
+### 🔥 Spectrogram Example
+`static/spectrograms/bass_spec.png`
+
+<img src="static/spectrograms/bass_spec.png" width="500">
+
+
+---
+
+## 🎥 Demo Video
+
+`demo.mp4`
+
+
+
+---
+
+## 📦 10. Code Structure
 
 ```
-if 'TF_CONFIG' in os.environ:
-    del os.environ['TF_CONFIG']
+EF2039_AI_TERMPROJECT/
+ ├── app.py
+ ├── main.py
+ ├── requirements.txt
+ ├── templates/
+ │   └── index.html
+ ├── static/
+ │   ├── waveforms/
+ │   └── spectrograms/
+ ├── output/
+ ├── uploads/
+ └── README.md
 ```
 
 ---
 
-## 📜 License
 
-This project follows the **MIT License**.
+## 🔮 11. Future Extensions
+
+* Fine-tuning for **engineering-frequency signal analysis**
+* Instrument-wise **sheet music generation**
+* Real-time vocal removal (streaming)
+* AI-assisted music arrangement tools
+* Acoustic fingerprinting research
+
+

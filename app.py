@@ -3,7 +3,7 @@ import warnings
 import logging
 from pathlib import Path
 
-from flask import Flask, render_template, request, send_from_directory
+from flask import Flask, render_template, request
 from spleeter.separator import Separator
 
 import librosa
@@ -13,7 +13,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import librosa.display
 
-# ===== 기존 main.py 설정 그대로 가져오기 =====
+# ===== TensorFlow / Spleeter configuration =====
 if "TF_CONFIG" in os.environ:
     del os.environ["TF_CONFIG"]
 
@@ -32,7 +32,7 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 (STATIC_DIR / "waveforms").mkdir(exist_ok=True)
 (STATIC_DIR / "spectrograms").mkdir(exist_ok=True)
 
-# ===== Spleeter 모델 캐싱 =====
+# ===== Spleeter model caching =====
 _separators = {}
 
 def get_separator(model_type: str) -> Separator:
@@ -41,8 +41,8 @@ def get_separator(model_type: str) -> Separator:
         _separators[model_type] = Separator(model_name)
     return _separators[model_type]
 
-# ===== 분석 & 시각화 함수 =====
 
+# ===== Analysis & visualization functions (local save only) =====
 def generate_waveform_image(audio_path: Path, image_path: Path):
     y, sr = librosa.load(str(audio_path), mono=True)
     plt.figure(figsize=(8, 2))
@@ -64,6 +64,7 @@ def generate_spectrogram_image(audio_path: Path, image_path: Path):
     plt.close()
 
 def analyze_stem(stem_path: Path) -> dict:
+    """Generate simple metrics and images for each separated stem."""
     y, sr = librosa.load(str(stem_path), mono=True)
     duration = librosa.get_duration(y=y, sr=sr)
     rms = float(librosa.feature.rms(y=y).mean())
@@ -80,12 +81,13 @@ def analyze_stem(stem_path: Path) -> dict:
         "duration": round(duration, 2),
         "rms": round(rms, 5),
         "peak": round(peak, 5),
-        "relpath": str(stem_path.relative_to(OUTPUT_DIR)),
-        "wave_img": f"waveforms/{wave_img.name}",
-        "spec_img": f"spectrograms/{spec_img.name}",
+        "wave_img": str(wave_img),
+        "spec_img": str(spec_img),
     }
 
+
 def separate_audio_web(input_path: Path, model_type: str) -> Path:
+    """Separate uploaded audio file using Spleeter and save results in output folder."""
     separator = get_separator(model_type)
     file_stem = input_path.stem
     out_dir = OUTPUT_DIR / file_stem / model_type
@@ -96,9 +98,14 @@ def separate_audio_web(input_path: Path, model_type: str) -> Path:
         filename_format="{instrument}.wav"
     )
 
+    # Generate spectrogram/waveform for each separated stem (not shown on UI)
+    for stem_file in out_dir.glob("*.wav"):
+        analyze_stem(stem_file)
+
     return out_dir
 
-# ===== Flask 앱 =====
+
+# ===== Flask App =====
 app = Flask(
     __name__,
     static_folder=str(BASE_DIR / "static"),
@@ -108,56 +115,47 @@ app = Flask(
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "GET":
-        return render_template("index.html", stems=None)
+        return render_template(
+            "index.html",
+            error=None,
+            success=None,
+            model_type="2stems",
+            original_filename=None,
+        )
 
     file = request.files.get("file")
     model_type = request.form.get("model", "2stems")
 
     if not file or file.filename == "":
-        return render_template("index.html", error="파일을 선택해주세요.", stems=None)
+        return render_template(
+            "index.html",
+            error="Please select a file.",
+            success=None,
+            model_type=model_type,
+            original_filename=None,
+        )
 
     upload_path = UPLOAD_DIR / file.filename
     file.save(upload_path)
 
     try:
-        out_dir = separate_audio_web(upload_path, model_type)
+        separate_audio_web(upload_path, model_type)
     except Exception as e:
-        return render_template("index.html", error=f"Spleeter 오류: {e}", stems=None)
-
-    stems = []
-    for stem_file in sorted(out_dir.glob("*.wav")):
-        stems.append(analyze_stem(stem_file))
+        return render_template(
+            "index.html",
+            error=f"Spleeter Error: {e}",
+            success=None,
+            model_type=model_type,
+            original_filename=file.filename,
+        )
 
     return render_template(
         "index.html",
-        stems=stems,
-        original_filename=file.filename,
-        model_type=model_type,
         error=None,
+        success="Successfully separated! Files saved in output directory.",
+        model_type=model_type,
+        original_filename=file.filename,
     )
-
-@app.route("/download/<path:relpath>")
-def download(relpath):
-    full_path = OUTPUT_DIR / relpath
-    if not full_path.exists():
-        return "File not found", 404
-
-    return send_from_directory(
-        directory=str(full_path.parent),
-        path=full_path.name,
-        as_attachment=False,      
-        mimetype="audio/wav"      
-    )
-
-    @app.route("/audio/<path:relpath>")
-    def serve_audio(relpath):
-        full_path = OUTPUT_DIR / relpath
-        return send_from_directory(
-            directory=str(full_path.parent),
-            path=full_path.name,
-            mimetype="audio/wav"
-        )
-
 
 
 if __name__ == "__main__":
