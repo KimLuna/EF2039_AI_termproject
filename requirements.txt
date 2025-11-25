@@ -3,3 +3,7 @@ ffmpeg-python
 numpy
 pandas
 # Recommended Python Version: 3.9 or 3.10
+Flask
+librosa
+soundfile
+matplotlib
