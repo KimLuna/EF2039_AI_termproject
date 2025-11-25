@@ -2,9 +2,17 @@ import os
 import argparse
 from spleeter.separator import Separator
 from pathlib import Path
+import warnings
+import logging
 
 if 'TF_CONFIG' in os.environ:
     del os.environ['TF_CONFIG']
+
+# Hide unneccesary warning & error logs
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # 0:모두출력, 1:INFO숨김, 2:WARNING숨김, 3:ERROR만출력
+warnings.filterwarnings('ignore')
+logging.getLogger('tensorflow').setLevel(logging.ERROR)
+logging.getLogger('spleeter').setLevel(logging.ERROR)
 
 def separate_audio(input_filename, model_type):
     """
@@ -20,7 +28,7 @@ def separate_audio(input_filename, model_type):
     # model separates audio into 2 components: Vocals and Accompaniment
     model_name = f"spleeter:{model_type}"
 
-    print(f"=== Settings ===")
+    print(f"\n=== Settings ===")
     print(f"Input File: {input_filename}")
     print(f"Model: {model_name}")
 
@@ -37,7 +45,7 @@ def separate_audio(input_filename, model_type):
     output_directory = Path("output") / file_stem / model_type
     
     # Perform separation
-    print(f"Processing start...")
+    print(f"Processing start...\n")
     try:
         separator.separate_to_file(input_filename, output_directory)
         print(f"Song successfully separated in {output_directory}")
